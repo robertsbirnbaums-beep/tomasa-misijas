@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tomasa misijas</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#5DA130">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Pixelify+Sans:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a blocky pixel world drawn on a canvas behind the page; content sits in bevelled stone panels with square corners. One theme by choice. */
+:root{
+  color-scheme: light;
+  --sky:#7DB8F5; --panel:#C6C6C6; --hi:#FFFFFF; --lo:#585858; --ink:#1D1D1D; --soft:#454545;
+  --grass:#5DA130; --gold:#F8D548; --aqua:#6FE3DA; --red:#D8423A; --slot:#E4E4E4;
+  --display:"Pixelify Sans","Courier New",monospace;
+  --body:"Chakra Petch","Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--sky);color:var(--ink);font-family:var(--body);font-size:18px;line-height:1.4;font-weight:600}
+#world{position:fixed;inset:0;width:100%;height:100%;image-rendering:pixelated;z-index:0}
+#app{position:relative;z-index:1;max-width:720px;margin:0 auto;padding:16px 16px 120px;display:flex;flex-direction:column;gap:16px}
+h1,h2,h3{font-family:var(--display);margin:0;line-height:1.1;text-wrap:balance;font-weight:700}
+h1{font-size:38px} h2{font-size:26px} h3{font-size:21px}
+p{margin:0}
+.muted{color:var(--soft);font-size:17px}
+.hero h1{color:#fff;text-shadow:3px 3px 0 #1D1D1D}
+.hero .muted{color:#fff;text-shadow:2px 2px 0 #1D1D1D}
+.card{background:var(--panel);border:4px solid var(--ink);box-shadow:inset 4px 4px 0 var(--hi),inset -4px -4px 0 var(--lo);padding:20px;display:flex;flex-direction:column;gap:12px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.tile{border:4px solid var(--ink);padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.tile.p{background:var(--gold);box-shadow:inset 4px 4px 0 #FFF3A8,inset -4px -4px 0 #B8901C}
+.tile.m{background:var(--aqua);box-shadow:inset 4px 4px 0 #D2FBF6,inset -4px -4px 0 #2E9C95}
+.tile b{font-family:var(--body);font-size:48px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.tile span{font-weight:700;font-size:17px}
+.bar{height:18px;border:4px solid var(--ink);background:#2A2A2A;overflow:hidden}
+.bar i{display:block;height:100%;background:#7EE034;box-shadow:inset 0 3px 0 #C4F58A,inset 0 -3px 0 #4C9A16;min-width:0}
+.row{display:flex;align-items:center;gap:12px}
+.row .grow{flex:1;min-width:0}
+.wrap{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:3px solid var(--ink);padding:2px 10px;font-weight:700;font-size:16px;background:#fff;font-family:inherit;color:var(--ink)}
+.chip.wait{background:#F6E7A1} .chip.ok{background:#B5E08A} .chip.no{background:#F3B1AC}
+.task{display:flex;align-items:center;gap:12px;border:4px solid var(--ink);padding:10px 12px;background:var(--slot);box-shadow:inset 3px 3px 0 #9A9A9A,inset -3px -3px 0 #fff;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.task .box{flex:none;width:36px;height:36px;border:4px solid var(--ink);background:#fff;display:grid;place-items:center;font-weight:700;font-size:22px}
+.task.done{background:#F6E7A1} .task.done .box{background:var(--gold)}
+.task.ok{background:#B5E08A;cursor:default} .task.ok .box{background:var(--grass);color:#fff}
+.task .t{flex:1;min-width:0;font-weight:700;overflow-wrap:anywhere}
+.task small{display:block;font-weight:600;color:var(--soft);font-size:16px}
+.pts{font-family:var(--body);font-weight:700;font-size:20px;white-space:nowrap}
+button{font:inherit;color:inherit}
+.btn{border:4px solid var(--ink);background:#7A7A7A;color:#fff;text-shadow:2px 2px 0 #2A2A2A;font-family:var(--body);font-weight:700;font-size:19px;padding:8px 16px;box-shadow:inset 3px 3px 0 #B0B0B0,inset -3px -3px 0 #4A4A4A;cursor:pointer}
+.btn:active{box-shadow:inset 3px 3px 0 #4A4A4A,inset -3px -3px 0 #B0B0B0}
+.btn.alt{background:#E4E4E4;color:var(--ink);text-shadow:none;box-shadow:inset 3px 3px 0 #fff,inset -3px -3px 0 #9A9A9A}
+.btn.go{background:var(--grass);box-shadow:inset 3px 3px 0 #8FD45A,inset -3px -3px 0 #37691A}
+.btn.warn{background:var(--red);box-shadow:inset 3px 3px 0 #F08A84,inset -3px -3px 0 #8E221C}
+.btn.sm{font-size:17px;padding:4px 12px;border-width:3px}
+.btn:disabled{background:#B4B4B4;color:#6A6A6A;text-shadow:none;box-shadow:none;cursor:not-allowed}
+:focus-visible{outline:4px solid var(--red);outline-offset:2px}
+input,select{font:inherit;color:var(--ink);border:4px solid var(--ink);border-radius:0;padding:8px 10px;background:#fff;min-width:0;width:100%}
+label{font-weight:700;font-size:17px;display:flex;flex-direction:column;gap:4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.reward{display:flex;align-items:center;gap:12px;border:4px solid var(--ink);padding:10px 12px;background:var(--slot);box-shadow:inset 3px 3px 0 #9A9A9A,inset -3px -3px 0 #fff;flex-wrap:wrap}
+.reward .t{flex:1 1 180px;min-width:0;font-weight:700}
+.reward.goal{background:#F6E7A1}
+.tier{font-family:var(--body);font-weight:700;font-size:18px;color:var(--soft);text-transform:uppercase;letter-spacing:.06em}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:2;background:var(--panel);border-top:4px solid var(--ink);box-shadow:inset 0 4px 0 var(--hi);display:flex;justify-content:center;gap:6px;padding:10px 12px calc(8px + env(safe-area-inset-bottom))}
+nav a{flex:1;max-width:170px;text-align:center;text-decoration:none;color:var(--ink);font-family:var(--body);font-weight:700;font-size:17px;border:4px solid transparent;padding:6px 4px}
+nav a.on{background:var(--grass);border-color:var(--ink);color:#fff;text-shadow:2px 2px 0 #2A2A2A;box-shadow:inset 3px 3px 0 #8FD45A,inset -3px -3px 0 #37691A}
+.note{border:4px solid var(--ink);padding:8px 12px;background:#F6E7A1;font-size:17px;font-weight:700}
+#dlg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
+#dlg.on{display:flex}
+#dlg .card{width:100%;max-width:440px;max-height:90%;overflow:auto}
+.hist{display:flex;flex-direction:column;gap:6px;font-size:17px}
+.hist div{display:flex;justify-content:space-between;gap:12px;border-bottom:2px solid #9A9A9A;padding-bottom:4px}
+.hist span:last-child{font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pop{animation:pop .35s steps(4)}
+@keyframes pop{0%{transform:scale(.85)}60%{transform:scale(1.08)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.pop{animation:none}}
+@media (max-width:420px){.grid2{grid-template-columns:1fr}.tile b{font-size:38px}h1{font-size:30px}}
+</style>
+</head>
+<body>
+<canvas id="world" aria-hidden="true"></canvas>
+<div id="app"></div>
+<nav id="nav"></nav>
+<div id="dlg"><div class="card" id="dlgc" role="dialog" aria-modal="true"></div></div>
+<script>
+"use strict";
+/* ---------- Noklusējuma iestatījumi (vecāki var mainīt sadaļā "Vecākiem") ---------- */
+const DEF = {
+  rate: 5,
+  timetable: {
+    1: ["Vizuālā māksla","Matemātika","Dizains un tehnoloģijas","Latviešu valoda","Sports un veselība"],
+    2: ["Latviešu valoda","Klases stunda","Angļu valoda","Matemātika","Fakultatīvs (matemātika)"],
+    3: ["Dabaszinības","Latviešu valoda","Vizuālā māksla","Latviešu valoda","Matemātika"],
+    4: ["Latviešu valoda","Angļu valoda","Mūzika","Matemātika","Sports un veselība"],
+    5: ["Dabaszinības","Sports un veselība","Latviešu valoda","Sociālās zinības","Mūzika"]
+  },
+  skip: ["Klases stunda"],
+  extras: {"Sports un veselība":"Sporta tērps un apavi"},
+  clubs: [
+    {id:"baseins", name:"Baseins", days:[2,4,0], bag:"Peldlietas: peldbikses, brilles, dvielis"},
+    {id:"lego", name:"Lego", days:[2]},
+    {id:"sahs", name:"Šahs", days:[3]},
+    {id:"keramika", name:"Keramika", days:[]}
+  ],
+  /* days: 0 = svētdiena … 6 = sestdiena */
+  missions: [
+    {id:"logopeds", label:"Logopēda vingrinājumi", p:15, days:[0,1,2,3,4,5,6]},
+    {id:"glitraksti", label:"Glītraksti", p:10, days:[0,1,2,3,4,5,6]},
+    {id:"macibas", label:"Pašam izmācīties", p:15, days:[1,2,3,4,5]},
+    {id:"istaba", label:"Pievākt istabu", p:10, days:[0,1,2,3,4,5,6]},
+    {id:"pastaiga", label:"Brīvdienu pastaiga visai ģimenei", p:20, days:[6,0], family:true}
+  ],
+  bagPts: 5,
+  bonus: ["Iznest atkritumus","Izkraut trauku mašīnu","Uzklāt galdu","Novākt galdu","Salocīt savas drēbes","Aplaistīt puķes","Izsūkt savu istabu","Palīdzēt gatavot vakariņas","Sakārtot apavus priekšnamā","Saklāt gultu"],
+  rewards: {
+    r1:{label:"Papildu 5 minūtes ekrāna", cost:25, tier:1, min:5},
+    r2:{label:"Masāža", cost:30, tier:1},
+    r3:{label:"Kinder ola", cost:50, tier:1},
+    r4:{label:"2 eiro", cost:150, tier:2},
+    r5:{label:"Kino vakars", cost:200, tier:2},
+    r6:{label:"Pokemon kārtis", cost:250, tier:2},
+    r7:{label:"Pārgājiens pēc Tomasa izvēles", cost:250, tier:2},
+    r9:{label:"Lielais Lego", cost:1200, tier:3},
+    r8:{label:"Nakts viesnīcā", cost:2000, tier:3}
+  }
+};
+const DAY = ["svētdiena","pirmdiena","otrdiena","trešdiena","ceturtdiena","piektdiena","sestdiena"];
+const DAYD = ["svētdienai","pirmdienai","otrdienai","trešdienai","ceturtdienai","piektdienai","sestdienai"];
+const DSH = ["Sv","P","O","T","C","Pk","S"];
+const TIERS = {1:"Mazās balvas",2:"Vidējās balvas",3:"Lielās balvas"};
+const LEVELS = ["Koka iesācējs","Koka meistars","Akmens iesācējs","Akmens meistars","Dzelzs iesācējs","Dzelzs meistars","Zelta iesācējs","Zelta meistars","Dimanta iesācējs","Dimanta meistars","Leģenda"];
+/* Līmeņa sliekšņi aug: 100, 300, 600, 1000, 1500 … (n. līmenis sākas pie 50·n·(n−1) punktiem) */
+const lvStart = n => 50 * n * (n + 1);
+function levelOf(e){ let n = 0; while (e >= lvStart(n + 1)) n++; return {n, from: lvStart(n), to: lvStart(n + 1)}; }
+const missionsOn = dow => DEF.missions.filter(d => d.days.indexOf(dow) >= 0);
+
+/* ---------- Stāvoklis un glabātuve ---------- */
+const S = {days:{}, cfg:{}, kid:{}, mode:"loading"};   // mode: loading | cloud | local | offline | readonly
+let db = null, parentOk = false, dirty = false;
+const chain = {}, pending = {}, exists = {};
+const LS = "tomasa-misijas-v1";
+const clone = o => JSON.parse(JSON.stringify(o));
+function merge(t, p){ for (const k in p){ const v = p[k]; if (v && typeof v === "object" && !Array.isArray(v)) t[k] = merge(t[k] && typeof t[k] === "object" && !Array.isArray(t[k]) ? Object.assign({}, t[k]) : {}, v); else t[k] = v; } return t; }
+function slot(path){ const [c, id] = path.split("/"); if (c === "days") return {get:()=>S.days[id], set:v=>{S.days[id]=v}}; if (c === "config") return {get:()=>S.cfg, set:v=>{S.cfg=v}}; return {get:()=>S.kid, set:v=>{S.kid=v}}; }
+function write(path, patch){
+  if (S.mode === "loading" || S.mode === "offline" || S.mode === "readonly") return;
+  const sl = slot(path); sl.set(merge(Object.assign({}, sl.get() || {}), clone(patch))); render(true);
+  if (S.mode === "local"){ saveLocal(); return; }
+  pending[path] = (pending[path] || 0) + 1;
+  chain[path] = (chain[path] || Promise.resolve()).then(async () => {
+    const ref = db.doc(path);
+    try {
+      if (exists[path]){
+        try { await ref.update(clone(patch)); }
+        catch (e) { if (!e || e.code !== "invalid_argument") throw e; await ref.set(clone(sl.get() || patch)); }   // dokuments izdzēsts citur: ieraksta visu no jauna
+      } else await ref.set(clone(sl.get() || patch));
+      exists[path] = true;
+    }
+    catch (e) { if (e && e.code === "invalid_argument") S.mode = "readonly"; else if (e && e.code === "revoked") S.mode = "offline"; }
+    pending[path]--; if (S.mode !== "cloud") render(true);
+  });
+}
+function saveLocal(){ try { localStorage.setItem(LS, JSON.stringify({days:S.days, cfg:S.cfg, kid:S.kid})); S.storeErr = false; } catch(e){ S.storeErr = true; render(true); } }
+async function boot(){
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch(e){}
+  route(); render(true);
+  let c = null;
+  try { c = (window.claude && window.claude.use) ? await window.claude.use("db") : null; } catch(e){ c = null; }
+  if (!c){ S.mode = "local"; try { const o = JSON.parse(localStorage.getItem(LS) || "{}"); S.days = o.days || {}; S.cfg = o.cfg || {}; S.kid = o.kid || {}; } catch(e){} render(true); return; }
+  db = c; const got = {};
+  const timer = setTimeout(() => { if (S.mode === "loading"){ S.mode = "offline"; render(true); } }, 10000);
+  const ready = k => { got[k] = 1; if (got.d && got.c && got.k && (S.mode === "loading" || S.mode === "offline")){ clearTimeout(timer); S.mode = "cloud"; } render(); };
+  const fail = () => { clearTimeout(timer); S.mode = "offline"; render(true); };
+  db.collection("days").onSnapshot(q => { const n = {}; for (const p in exists) if (p.indexOf("days/") === 0) exists[p] = false; q.docs.forEach(d => { const p = "days/" + d.id; exists[p] = true; n[d.id] = pending[p] > 0 && S.days[d.id] ? S.days[d.id] : clone(d.data() || {}); }); for (const id in S.days) if (pending["days/" + id] > 0 && !n[id]) n[id] = S.days[id]; S.days = n; ready("d"); }, fail);
+  db.doc("config/main").onSnapshot(s => { exists["config/main"] = s.exists; if (!(pending["config/main"] > 0)) S.cfg = s.exists ? clone(s.data()) : {}; ready("c"); }, fail);
+  db.doc("meta/kid").onSnapshot(s => { exists["meta/kid"] = s.exists; if (!(pending["meta/kid"] > 0)) S.kid = s.exists ? clone(s.data()) : {}; ready("k"); }, fail);
+}
+
+/* ---------- Palīgfunkcijas ---------- */
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const key = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+const fromKey = k => { const a = k.split("-").map(Number); return new Date(a[0], a[1] - 1, a[2]); };
+const addDays = (d, n) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() + n); return x; };
+const isSchool = d => d.getDay() >= 1 && d.getDay() <= 5;
+const slug = s => "i_" + s.toLowerCase().normalize("NFD").replace(/[^a-z0-9]+/g, "_");
+function bagTarget(now){ if (isSchool(now) && now.getHours() < 9) return now; let d = addDays(now, 1); while (!isSchool(d)) d = addDays(d, 1); return d; }
+function clubs(){ const cd = S.cfg.clubDays || {}; return DEF.clubs.map(c => Object.assign({}, c, {days: Array.isArray(cd[c.id]) ? cd[c.id] : c.days})); }
+function clubsOn(dow){ return clubs().filter(c => c.days.indexOf(dow) >= 0); }
+function bagItems(d){
+  const out = [{k:"i_pamats", t:"Penālis un dienasgrāmata"}], seen = {};
+  (DEF.timetable[d.getDay()] || []).forEach(l => { if (seen[l] || DEF.skip.indexOf(l) >= 0) return; seen[l] = 1; out.push({k:slug(l), t:l, sub:"mācību grāmata un burtnīca"}); if (DEF.extras[l]) out.push({k:slug(DEF.extras[l]), t:DEF.extras[l], sub:"sporta stundai"}); });
+  clubsOn(d.getDay()).forEach(c => { if (c.bag) out.push({k:slug(c.id + "_soma"), t:c.bag, sub:"pulciņam: " + c.name}); });
+  return out;
+}
+function rate(){ return +S.cfg.rate > 0 ? +S.cfg.rate : DEF.rate; }
+function rewards(){ const r = merge(clone(DEF.rewards), S.cfg.rewards || {}); return Object.keys(r).map(id => Object.assign({id}, r[id])).filter(x => !x.off && x.label).sort((a, b) => (a.tier - b.tier) || (a.cost - b.cost)); }
+function totals(){
+  let p = 0, min = 0, earned = 0, pages = 0;
+  for (const d of Object.values(S.days)){
+    for (const m of Object.values(d.m || {})) if (m && m.s === "ok"){ p += +m.p || 0; earned += +m.p || 0; }
+    for (const r of Object.values(d.r || {})) if (r && r.s === "ok"){ min += +r.min || 0; pages += +r.pages || 0; }
+    for (const u of Object.values(d.u || {})) if (u && u.s !== "void") min -= +u.min || 0;
+    for (const b of Object.values(d.buy || {})) if (b && b.s !== "void"){ p -= +b.cost || 0; min += +b.min || 0; }
+    for (const a of Object.values(d.adj || {})) if (a){ p += +a.p || 0; min += +a.min || 0; }
+  }
+  return {p, min, earned, pages};
+}
+/* Sērija: diena skaitās, ja izdarītas visas tās dienas paša Tomasa misijas (ģimenes pastaiga sēriju nepārtrauc) */
+function dayDone(d){ const m = (S.days[key(d)] || {}).m || {}, ids = missionsOn(d.getDay()).filter(x => !x.family).map(x => x.id).concat(isSchool(d) ? ["soma"] : []);
+  return ids.every(id => m[id] && (m[id].s === "done" || m[id].s === "ok")); }
+function streak(now){ let n = 0, d = now; if (!dayDone(d)) d = addDays(d, -1); for (let i = 0; i < 366; i++){ if (dayDone(d)) n++; else break; d = addDays(d, -1); } return n; }
+function pendingList(){
+  const out = [];
+  Object.keys(S.days).sort().forEach(k => { const d = S.days[k];
+    for (const id in (d.m || {})) if (d.m[id] && d.m[id].s === "done") out.push({k, f:"m", id, t:d.m[id].label, v:"+" + d.m[id].p + " p."});
+    for (const id in (d.r || {})) if (d.r[id] && d.r[id].s === "wait") out.push({k, f:"r", id, t:"Lasīšana: " + d.r[id].pages + " lpp." + (d.r[id].book ? " (" + d.r[id].book + ")" : ""), v:"+" + d.r[id].min + " min"});
+    for (const id in (d.buy || {})) if (d.buy[id] && d.buy[id].s === "new") out.push({k, f:"buy", id, t:"Balva: " + d.buy[id].label, v:"−" + d.buy[id].cost + " p."});
+  });
+  return out;
+}
+function history(){
+  const ev = [];
+  Object.keys(S.days).forEach(k => { const d = S.days[k];
+    for (const m of Object.values(d.m || {})) if (m && m.s === "ok") ev.push([k, m.label, "+" + m.p + " p."]);
+    for (const r of Object.values(d.r || {})) if (r && r.s === "ok") ev.push([k, "Lasīšana " + r.pages + " lpp.", "+" + r.min + " min"]);
+    for (const u of Object.values(d.u || {})) if (u && u.s !== "void") ev.push([k, "Izmantots ekrāna laiks", "−" + u.min + " min"]);
+    for (const b of Object.values(d.buy || {})) if (b && b.s !== "void") ev.push([k, "Balva: " + b.label, "−" + b.cost + " p."]);
+    for (const a of Object.values(d.adj || {})) if (a) ev.push([k, a.note || "Vecāku labojums", (a.p ? (a.p > 0 ? "+" : "") + a.p + " p. " : "") + (a.min ? (a.min > 0 ? "+" : "") + a.min + " min" : "")]);
+  });
+  return ev.sort((a, b) => a[0] < b[0] ? 1 : -1).slice(0, 20);
+}
+const fmtK = k => { const d = fromKey(k); return d.getDate() + "." + (d.getMonth() + 1) + "."; };
+
+/* ---------- Skati ---------- */
+let view = "sodien";
+function route(){ const h = (location.hash || "").replace("#", ""); view = ["sodien","lasisana","veikals","vecaki"].indexOf(h) >= 0 ? h : "sodien"; }
+function statusNote(){
+  if (S.mode === "loading") return '<div class="note">Ielādē saglabātos datus…</div>';
+  if (S.mode === "local") return S.storeErr ? '<div class="note">Šajā pārlūkā datus nevar saglabāt. Atver lietotni parastā Chrome logā, ne inkognito režīmā.</div>' : "";
+  if (S.mode === "offline") return '<div class="note">Datus pašlaik nevar sasniegt, tāpēc izmaiņas netiek saglabātas. Pārbaudi internetu un atver lapu vēlreiz.</div>';
+  if (S.mode === "readonly") return '<div class="note">Šai ierīcei nav tiesību saglabāt izmaiņas. Lapas īpašniekam jāpiešķir rediģēšanas tiesības.</div>';
+  return "";
+}
+function head(T, now){
+  const L = levelOf(T.earned), lv = L.n, st = streak(now), pct = Math.round((T.earned - L.from) / (L.to - L.from) * 100);
+  return '<div class="top hero"><div><h1>Tomasa misijas</h1><p class="muted">' + DAY[now.getDay()] + ", " + now.getDate() + "." + (now.getMonth() + 1) + '.</p></div>' +
+    '<div class="wrap"><span class="chip">' + (lv + 1) + ". līmenis · " + LEVELS[Math.min(lv, LEVELS.length - 1)] + '</span>' + (st > 0 ? '<span class="chip ok">' + st + (st === 1 ? " diena" : " dienas") + ' pēc kārtas</span>' : "") + '</div></div>' +
+    statusNote() +
+    '<div class="tiles"><div class="tile p"><b>' + T.p + '</b><span>punkti balvām</span></div><div class="tile m"><b>' + T.min + '</b><span>ekrāna minūtes</span></div></div>' +
+    '<div class="card"><div class="bar" aria-label="Līdz nākamajam līmenim"><i style="width:' + pct + '%"></i></div><p class="muted">Līdz ' + (lv + 2) + '. līmenim vēl ' + (L.to - T.earned) + ' punkti</p></div>';
+}
+function taskRow(m, act, extra){
+  const s = m.s || "todo";
+  return '<button class="task ' + (s === "todo" ? "" : s) + '" ' + (s === "ok" ? "disabled" : 'data-a="' + act + '"') + " " + (extra || "") + '><span class="box">' + (s === "todo" ? "" : "✓") + '</span><span class="t">' + esc(m.label) + (s === "done" ? "<small>Gaida vecāku apstiprinājumu</small>" : s === "ok" ? "<small>Apstiprināts</small>" : "") + '</span><span class="pts">+' + m.p + "</span></button>";
+}
+function vSodien(T, now){
+  const tk = key(now), day = S.days[tk] || {}, m = day.m || {};
+  let h = "";
+  // dienas misijas
+  let rows = "";
+  missionsOn(now.getDay()).forEach(d => { rows += taskRow(Object.assign({}, d, m[d.id] || {}), "mis", 'data-id="' + d.id + '"'); });
+  Object.keys(m).forEach(id => { if (m[id] && m[id].bonus && m[id].s !== "void") rows += taskRow(m[id], "mis", 'data-id="' + id + '"'); });
+  const cl = clubsOn(now.getDay());
+  h += '<section class="card"><div class="top"><h2>Šodienas misijas</h2>' + (cl.length ? '<div class="wrap">' + cl.map(c => '<span class="chip">' + esc(c.name) + "</span>").join("") + "</div>" : "") + "</div>" +
+    (rows || '<p class="muted">Šodien misiju nav. Papildu misijas parādīsies, ja vecāki tās pievienos.</p>') + "</section>";
+  // soma
+  const bt = bagTarget(now), bk = key(bt), bd = S.days[bk] || {}, bag = bd.bag || {}, items = bagItems(bt), sm = (bd.m || {}).soma || {};
+  const n = items.filter(i => bag[i.k]).length, locked = sm.s === "ok";
+  h += '<section class="card"><div class="top"><h2>Soma ' + DAYD[bt.getDay()] + '</h2><span class="pts">' + n + " / " + items.length + " · +" + DEF.bagPts + "</span></div>" +
+    '<div class="bar"><i style="width:' + Math.round(n / items.length * 100) + '%"></i></div>' +
+    items.map(i => '<button class="task ' + (locked ? "ok" : bag[i.k] ? "done" : "") + '" ' + (locked ? "disabled" : 'data-a="bag" data-k="' + i.k + '"') + '><span class="box">' + (bag[i.k] || locked ? "✓" : "") + '</span><span class="t">' + esc(i.t) + (i.sub ? "<small>" + esc(i.sub) + "</small>" : "") + "</span></button>").join("") +
+    (locked ? '<span class="chip ok">Soma apstiprināta</span>' : sm.s === "done" ? '<span class="chip wait">Soma sakrāmēta. Gaida vecāku apstiprinājumu</span>' : "") + "</section>";
+  // mērķis
+  const g = rewards().find(r => r.id === S.kid.goal);
+  if (g) h += '<section class="card"><div class="top"><h2>Krāju: ' + esc(g.label) + '</h2><span class="pts">' + Math.min(T.p, g.cost) + " / " + g.cost + '</span></div><div class="bar"><i style="width:' + Math.min(100, Math.round(T.p / g.cost * 100)) + '%"></i></div><p class="muted">' + (T.p >= g.cost ? "Punktu pietiek. Ej uz veikalu!" : "Vēl jāsakrāj " + (g.cost - T.p) + " punkti.") + "</p></section>";
+  else h += '<section class="card"><h2>Kam tu krāj?</h2><p class="muted">Izvēlies veikalā balvu, kurai krāsi punktus.</p><div><a class="btn" href="#veikals" style="text-decoration:none;display:inline-block">Uz veikalu</a></div></section>';
+  return h;
+}
+function vLasisana(T){
+  let list = "";
+  Object.keys(S.days).sort().reverse().slice(0, 30).forEach(k => { const r = S.days[k].r || {}; Object.keys(r).sort().reverse().forEach(id => { const x = r[id]; if (!x || x.s === "void") return; list += '<div class="row"><div class="grow"><b>' + x.pages + " lpp.</b>" + (x.book ? " · " + esc(x.book) : "") + '<div class="muted">' + fmtK(k) + '</div></div><span class="chip ' + (x.s === "ok" ? "ok" : "wait") + '">' + (x.s === "ok" ? "+" + x.min + " min" : "gaida") + "</span></div>"; }); });
+  return '<section class="card"><div class="top"><h2>Ekrāna minūtes</h2><span class="pts">' + T.min + ' min</span></div><p class="muted">Minūtes krājas bez termiņa. Kad skaties ekrānu, atzīmē, cik minūtes izmanto.</p><div><button class="btn" data-a="use" ' + (T.min <= 0 ? "disabled" : "") + ">Izmantot minūtes</button></div></section>" +
+    '<section class="card"><h2>Pieraksti izlasīto</h2><p class="muted">1 lapaspuse = ' + rate() + ' minūtes. Minūtes pieskaitīs, kad vecāki apstiprinās.</p><div class="grid2"><label>Lapaspuses<input id="rd-pages" type="number" inputmode="numeric" min="1" max="300" placeholder="piem., 6"></label><label>Grāmata<input id="rd-book" type="text" maxlength="60" placeholder="nosaukums" value="' + esc(S.kid.book || "") + '"></label></div><div><button class="btn go" data-a="read">Pierakstīt</button></div></section>' +
+    '<section class="card"><div class="top"><h2>Lasīšanas žurnāls</h2><span class="chip">kopā ' + T.pages + " lpp.</span></div>" + (list || '<p class="muted">Vēl nav neviena ieraksta. Izlasi pirmās lapaspuses un pieraksti tās augstāk.</p>') + "</section>";
+}
+function vVeikals(T){
+  let h = '<section class="card"><div class="top"><h2>Balvu veikals</h2><span class="pts">Tev ir ' + T.p + " p.</span></div>", tier = 0;
+  rewards().forEach(r => { if (r.tier !== tier){ tier = r.tier; h += '<div class="tier">' + TIERS[tier] + "</div>"; }
+    const can = T.p >= r.cost, goal = S.kid.goal === r.id;
+    h += '<div class="reward ' + (goal ? "goal" : "") + '"><div class="t">' + esc(r.label) + '<div class="muted">' + (can ? "Vari nopirkt" : "Vēl trūkst " + (r.cost - T.p) + " p.") + '</div></div><button class="btn sm alt" data-a="goal" data-id="' + r.id + '">' + (goal ? "Krāju šim" : "Krāt šim") + '</button><button class="btn sm go" data-a="buy" data-id="' + r.id + '" ' + (can ? "" : "disabled") + ">" + r.cost + " p.</button></div>"; });
+  h += "</section>";
+  let mine = "";
+  Object.keys(S.days).sort().reverse().forEach(k => { const b = S.days[k].buy || {}; for (const id in b){ const x = b[id]; if (!x || x.s === "void") continue; mine += '<div class="row"><div class="grow"><b>' + esc(x.label) + '</b><div class="muted">' + fmtK(k) + '</div></div><span class="chip ' + (x.s === "given" ? "ok" : "wait") + '">' + (x.s === "given" ? "saņemts" : "gaida vecākus") + "</span></div>"; } });
+  return h + '<section class="card"><h2>Manas balvas</h2>' + (mine || '<p class="muted">Šeit parādīsies nopirktās balvas.</p>') + "</section>";
+}
+function vVecaki(T, now){
+  if (!parentOk) return '<section class="card"><h2>Vecākiem</h2><p class="muted">' + (S.cfg.pin ? "Ievadi vecāku PIN." : "Izveido vecāku PIN (4 cipari). To zinās tikai vecāki.") + '</p><label>PIN<input id="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off"></label><label style="flex-direction:row;align-items:center;gap:8px"><input id="pin-keep" type="checkbox" style="width:auto">Atcerēties šajā ierīcē</label><p id="pin-err" class="muted" style="color:var(--tomato);font-weight:800"></p><div><button class="btn" data-a="pin">' + (S.cfg.pin ? "Atvērt" : "Saglabāt PIN") + "</button></div></section>";
+  const pl = pendingList();
+  let h = '<section class="card"><div class="top"><h2>Gaida apstiprinājumu</h2>' + (pl.length > 1 ? '<button class="btn sm go" data-a="okall">Apstiprināt visu</button>' : "") + "</div>" +
+    (pl.length ? pl.map(x => '<div class="reward"><div class="t">' + esc(x.t) + '<div class="muted">' + fmtK(x.k) + " · " + x.v + '</div></div><button class="btn sm alt" data-a="no" data-k="' + x.k + '" data-f="' + x.f + '" data-id="' + x.id + '">' + (x.f === "buy" ? "Atcelt" : "Noraidīt") + '</button><button class="btn sm go" data-a="ok" data-k="' + x.k + '" data-f="' + x.f + '" data-id="' + x.id + '">' + (x.f === "buy" ? "Izsniegts" : "Apstiprināt") + "</button></div>").join("") : '<p class="muted">Viss apstiprināts.</p>') + "</section>";
+  h += '<section class="card"><h2>Papildu misija šodienai</h2><div class="wrap">' + DEF.bonus.map(b => '<button class="chip" data-a="preset" data-t="' + esc(b) + '" style="cursor:pointer">' + esc(b) + "</button>").join("") + '</div><div class="grid2"><label>Misija<input id="bn-label" type="text" maxlength="60" placeholder="ko jāizdara"></label><label>Punkti<select id="bn-p"><option>5</option><option selected>10</option><option>15</option><option>20</option><option>30</option></select></label></div><div><button class="btn" data-a="bonus">Pievienot</button></div></section>';
+  h += '<section class="card"><h2>Labot punktus vai minūtes</h2><p class="muted">Tagad: ' + T.p + " punkti, " + T.min + ' minūtes. Lai atņemtu, raksti negatīvu skaitli.</p><div class="grid2"><label>Punkti<input id="ad-p" type="number" inputmode="numeric" placeholder="0"></label><label>Minūtes<input id="ad-m" type="number" inputmode="numeric" placeholder="0"></label></div><label>Piezīme<input id="ad-n" type="text" maxlength="60" placeholder="piem., par palīdzību vecmāmiņai"></label><div><button class="btn" data-a="adj">Saglabāt labojumu</button></div></section>';
+  h += '<section class="card"><h2>Pulciņu dienas</h2>' + clubs().map(c => '<div class="row" style="flex-wrap:wrap"><b style="min-width:90px">' + esc(c.name) + '</b><div class="wrap">' + [1,2,3,4,5,6,0].map(d => '<button class="chip ' + (c.days.indexOf(d) >= 0 ? "ok" : "") + '" data-a="club" data-id="' + c.id + '" data-d="' + d + '" style="cursor:pointer" aria-pressed="' + (c.days.indexOf(d) >= 0) + '">' + DSH[d] + "</button>").join("") + "</div></div>").join("") + "</section>";
+  h += '<section class="card"><h2>Balvas un kurss</h2><label>Minūtes par vienu lapaspusi<input id="cf-rate" type="number" inputmode="numeric" min="1" max="30" value="' + rate() + '"></label>' +
+    rewards().map(r => '<div class="row"><div class="grow"><b>' + esc(r.label) + '</b><div class="muted">' + TIERS[r.tier] + '</div></div><input id="rw-' + r.id + '" data-rw="' + r.id + '" type="number" inputmode="numeric" min="1" value="' + r.cost + '" style="width:96px" aria-label="Cena punktos"><button class="btn sm alt" data-a="rwoff" data-id="' + r.id + '">Noņemt</button></div>').join("") +
+    '<div><button class="btn" data-a="cfsave">Saglabāt cenas un kursu</button></div><h3>Jauna balva</h3><div class="grid2"><label>Nosaukums<input id="nr-label" type="text" maxlength="50"></label><label>Cena punktos<input id="nr-cost" type="number" inputmode="numeric" min="1"></label></div><label>Lielums<select id="nr-tier"><option value="1">Mazā</option><option value="2">Vidējā</option><option value="3">Lielā</option></select></label><div><button class="btn" data-a="rwadd">Pievienot balvu</button></div></section>';
+  const hs = history();
+  h += '<section class="card"><h2>Pēdējie notikumi</h2><div class="hist">' + (hs.length ? hs.map(e => "<div><span>" + fmtK(e[0]) + " " + esc(e[1]) + "</span><span>" + e[2] + "</span></div>").join("") : '<p class="muted">Vēl nav notikumu.</p>') + '</div></section><section class="card"><h2>Rezerves kopija</h2><p class="muted">Visi punkti un minūtes glabājas tikai šajā planšetē. Reizi mēnesī lejupielādē kopiju, lai dati nepazustu, ja pārlūka dati tiek notīrīti vai planšete jāmaina.</p>' + (S.kid.lastBackup ? '<p class="muted">Pēdējā kopija: ' + fmtK(S.kid.lastBackup) + '</p>' : '') + '<div class="wrap"><button class="btn" data-a="export">Lejupielādēt kopiju</button><label class="btn alt" for="imp" style="display:inline-flex;flex-direction:row;cursor:pointer">Atjaunot no kopijas<input id="imp" type="file" accept=".json,application/json" hidden></label></div></section>' +
+    '<div><button class="btn alt" data-a="lock">Aizslēgt vecāku sadaļu</button></div>';
+  return h;
+}
+function typing(){ const a = document.activeElement; return a && document.getElementById("app").contains(a) && /INPUT|SELECT/.test(a.tagName) && a.type !== "checkbox"; }
+function render(force){
+  if (!force && typing()){ dirty = true; return; }
+  dirty = false;
+  const now = new Date(), T = totals(), app = document.getElementById("app");
+  const y = window.scrollY;
+  app.innerHTML = head(T, now) + (view === "lasisana" ? vLasisana(T) : view === "veikals" ? vVeikals(T) : view === "vecaki" ? vVecaki(T, now) : vSodien(T, now));
+  const pn = pendingList().length;
+  document.getElementById("nav").innerHTML = [["sodien","Šodien"],["lasisana","Lasīšana"],["veikals","Veikals"],["vecaki","Vecākiem" + (pn ? " (" + pn + ")" : "")]].map(v => '<a href="#' + v[0] + '" class="' + (view === v[0] ? "on" : "") + '">' + v[1] + "</a>").join("");
+  window.scrollTo(0, y);
+}
+function dlg(html){ document.getElementById("dlgc").innerHTML = html; document.getElementById("dlg").classList.add("on"); const b = document.querySelector("#dlgc button, #dlgc input"); if (b) b.focus(); }
+function closeDlg(){ document.getElementById("dlg").classList.remove("on"); }
+const val = id => { const e = document.getElementById(id); return e ? e.value.trim() : ""; };
+
+/* ---------- Darbības ---------- */
+function act(a, el){
+  const now = new Date(), tk = key(now), ds = el.dataset;
+  if (a === "close") return closeDlg();
+  if (a === "mis"){ const id = ds.id, cur = ((S.days[tk] || {}).m || {})[id] || {}, def = DEF.missions.find(d => d.id === id); if (cur.s === "ok") return;
+    const o = {}; o[id] = cur.bonus ? {s: cur.s === "done" ? "todo" : "done"} : {s: cur.s === "done" ? "todo" : "done", p: def.p, label: def.label}; return write("days/" + tk, {m:o}); }
+  if (a === "bag"){ const bt = bagTarget(now), bk = key(bt), d = S.days[bk] || {}, bag = Object.assign({}, d.bag || {}); bag[ds.k] = !bag[ds.k];
+    const all = bagItems(bt).every(i => bag[i.k]), o = {bag:{}}; o.bag[ds.k] = bag[ds.k];
+    if (((d.m || {}).soma || {}).s !== "ok") o.m = {soma:{s: all ? "done" : "todo", p: DEF.bagPts, label: "Sakrāmēt somu " + DAYD[bt.getDay()]}};
+    return write("days/" + bk, o); }
+  if (a === "read"){ const n = Math.floor(+val("rd-pages")), book = val("rd-book"); if (!(n >= 1 && n <= 300)) return dlg('<h2>Cik lapaspuses?</h2><p>Ieraksti skaitli no 1 līdz 300.</p><div><button class="btn" data-a="close">Labi</button></div>');
+    const o = {}; o[uid()] = {pages:n, book, min:n * rate(), s:"wait"}; write("days/" + tk, {r:o}); if (book !== (S.kid.book || "")) write("meta/kid", {book});
+    return dlg('<h2 class="pop">Pierakstīts!</h2><p>' + n + " lpp. = " + (n * rate()) + ' minūtes. Tās pieskaitīs, kad vecāki apstiprinās.</p><div><button class="btn" data-a="close">Labi</button></div>'); }
+  if (a === "use"){ const T = totals(); return dlg('<h2>Cik minūtes izmantosi?</h2><p class="muted">Tev ir ' + T.min + ' minūtes.</p><div class="wrap">' + [5,10,15,20,30,45,60].filter(n => n <= T.min).map(n => '<button class="btn alt" data-a="usego" data-n="' + n + '">' + n + "</button>").join("") + '<button class="btn alt" data-a="usego" data-n="' + T.min + '">Visas (' + T.min + ')</button></div><div><button class="btn sm alt" data-a="close">Atcelt</button></div>'); }
+  if (a === "usego"){ const n = Math.min(+ds.n, totals().min); if (n > 0){ const o = {}; o[uid()] = {min:n}; write("days/" + tk, {u:o}); } return dlg('<h2 class="pop">Izmantotas ' + n + ' minūtes</h2><p>Atlikušas ' + totals().min + ' minūtes.</p><div><button class="btn" data-a="close">Labi</button></div>'); }
+  if (a === "goal") return write("meta/kid", {goal: S.kid.goal === ds.id ? "" : ds.id});
+  if (a === "buy"){ const r = rewards().find(x => x.id === ds.id); if (!r) return; return dlg("<h2>Pirkt balvu?</h2><p><b>" + esc(r.label) + "</b> maksā " + r.cost + ' punktus.</p><div class="wrap"><button class="btn go" data-a="buygo" data-id="' + r.id + '">Jā, pirkt</button><button class="btn alt" data-a="close">Nē</button></div>'); }
+  if (a === "buygo"){ const r = rewards().find(x => x.id === ds.id); if (!r || totals().p < r.cost) return closeDlg(); const o = {}; o[uid()] = {rid:r.id, label:r.label, cost:r.cost, min:r.min || 0, s: r.min ? "given" : "new"}; write("days/" + tk, {buy:o});
+    return dlg('<h2 class="pop">Balva nopirkta!</h2><p>' + esc(r.label) + (r.min ? ". Minūtes jau pieskaitītas." : ". Parādi šo vecākiem, lai saņemtu balvu.") + '</p><div><button class="btn" data-a="close">Labi</button></div>'); }
+  /* vecāki */
+  if (a === "pin"){ const p = val("pin"), keep = document.getElementById("pin-keep").checked, err = document.getElementById("pin-err");
+    if (!S.cfg.pin){ if (!/^\d{4,8}$/.test(p)){ err.textContent = "PIN jābūt 4 līdz 8 cipariem."; return; } write("config/main", {pin:p}); }
+    else if (p !== String(S.cfg.pin)){ err.textContent = "Nepareizs PIN."; return; }
+    parentOk = true; try { if (keep) localStorage.setItem(LS + "-parent", "1"); } catch(e){} return render(true); }
+  if (!parentOk) return;
+  if (a === "export"){
+    const data = JSON.stringify({app:"tomasa-misijas", v:1, saved:new Date().toISOString(), days:S.days, cfg:S.cfg, kid:S.kid});
+    const url = URL.createObjectURL(new Blob([data], {type:"application/json"})), ln = document.createElement("a");
+    ln.href = url; ln.download = "tomasa-misijas-" + key(now) + ".json"; document.body.appendChild(ln); ln.click(); ln.remove(); setTimeout(() => URL.revokeObjectURL(url), 10000);
+    write("meta/kid", {lastBackup: key(now)});
+    return dlg('<h2>Kopija lejupielādēta</h2><p>Fails ir mapē Lejupielādes (Downloads). Ieteicams to pārsūtīt arī uz savu telefonu vai e-pastu.</p><div><button class="btn" data-a="close">Labi</button></div>'); }
+  if (a === "impgo"){ if (!importData) return closeDlg(); S.days = importData.days || {}; S.cfg = importData.cfg || {}; S.kid = importData.kid || {}; importData = null; saveLocal(); render(true);
+    return dlg('<h2 class="pop">Dati atjaunoti</h2><p>Punkti, minūtes un iestatījumi ir atjaunoti no kopijas.</p><div><button class="btn" data-a="close">Labi</button></div>'); }
+  if (a === "lock"){ parentOk = false; try { localStorage.removeItem(LS + "-parent"); } catch(e){} return render(true); }
+  if (a === "ok" || a === "no"){ const o = {}, i = {}; i[ds.id] = {s: ds.f === "m" ? (a === "ok" ? "ok" : "todo") : ds.f === "r" ? (a === "ok" ? "ok" : "void") : (a === "ok" ? "given" : "void")}; o[ds.f] = i;
+    if (ds.f === "m" && ds.id === "soma" && a === "no"){ o.bag = {}; for (const k in ((S.days[ds.k] || {}).bag || {})) o.bag[k] = false; }
+    return write("days/" + ds.k, o); }
+  if (a === "okall"){ const by = {}; pendingList().forEach(x => { by[x.k] = by[x.k] || {}; by[x.k][x.f] = by[x.k][x.f] || {}; by[x.k][x.f][x.id] = {s: x.f === "buy" ? "given" : "ok"}; }); for (const k in by) write("days/" + k, by[k]); return; }
+  if (a === "preset"){ document.getElementById("bn-label").value = ds.t; return; }
+  if (a === "bonus"){ const l = val("bn-label"); if (!l) return; const o = {}; o["b_" + uid()] = {s:"todo", p:+val("bn-p") || 10, label:l, bonus:true}; return write("days/" + tk, {m:o}); }
+  if (a === "adj"){ const p = Math.round(+val("ad-p")) || 0, m = Math.round(+val("ad-m")) || 0; if (!p && !m) return; const o = {}; o[uid()] = {p, min:m, note:val("ad-n")}; return write("days/" + tk, {adj:o}); }
+  if (a === "club"){ const c = clubs().find(x => x.id === ds.id), d = +ds.d, days = c.days.indexOf(d) >= 0 ? c.days.filter(x => x !== d) : c.days.concat([d]), o = {}; o[ds.id] = days; return write("config/main", {clubDays:o}); }
+  if (a === "cfsave"){ const rw = {}; document.querySelectorAll("[data-rw]").forEach(i => { const c = Math.round(+i.value); if (c > 0) rw[i.dataset.rw] = {cost:c}; }); const r = Math.round(+val("cf-rate")); return write("config/main", {rate: r > 0 ? r : rate(), rewards: rw}); }
+  if (a === "rwoff"){ const o = {}; o[ds.id] = {off:true}; return write("config/main", {rewards:o}); }
+  if (a === "rwadd"){ const l = val("nr-label"), c = Math.round(+val("nr-cost")); if (!l || !(c > 0)) return; const o = {}; o["c_" + uid()] = {label:l, cost:c, tier:+val("nr-tier") || 1}; return write("config/main", {rewards:o}); }
+}
+let importData = null;
+document.addEventListener("change", e => {
+  if (e.target.id !== "imp" || !parentOk) return;
+  const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    let o = null; try { o = JSON.parse(rd.result); } catch(err){}
+    if (!o || o.app !== "tomasa-misijas" || typeof o.days !== "object"){ importData = null; return dlg('<h2>Šo failu nevar atjaunot</h2><p>Izvēlies failu, ko lejupielādēja poga "Lejupielādēt kopiju" (tomasa-misijas-….json).</p><div><button class="btn" data-a="close">Labi</button></div>'); }
+    importData = o; const d = new Date(o.saved);
+    dlg('<h2>Atjaunot no kopijas?</h2><p>Kopija saglabāta ' + (isNaN(d) ? "nezināmā datumā" : d.getDate() + "." + (d.getMonth() + 1) + "." + d.getFullYear()) + '. Visi pašreizējie dati šajā planšetē tiks aizstāti ar kopijas datiem.</p><div class="wrap"><button class="btn warn" data-a="impgo">Jā, aizstāt</button><button class="btn alt" data-a="close">Atcelt</button></div>');
+  };
+  rd.readAsText(f);
+});
+document.addEventListener("click", e => { const el = e.target.closest("[data-a]"); if (!el || el.disabled) return; if (e.target.id === "dlg") return; act(el.dataset.a, el); });
+document.getElementById("dlg").addEventListener("click", e => { if (e.target.id === "dlg") closeDlg(); });
+document.addEventListener("focusout", () => setTimeout(() => { if (dirty) render(); }, 50));
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeDlg(); if (e.key === "Enter" && e.target.id === "pin") act("pin", e.target); });
+window.addEventListener("hashchange", () => { route(); closeDlg(); render(true); window.scrollTo(0, 0); });
+try { parentOk = localStorage.getItem(LS + "-parent") === "1"; } catch(e){}
+setInterval(() => { if (!document.getElementById("dlg").classList.contains("on")) render(); }, 600000);
+/* ---------- Fona pasaule: kluču ainava uz canvas ---------- */
+function paintWorld(){
+  const c = document.getElementById("world"); if (!c || !c.getContext) return;
+  const px = 8, W = Math.max(40, Math.ceil(window.innerWidth / px)), H = Math.max(40, Math.ceil(window.innerHeight / px));
+  c.width = W; c.height = H; const g = c.getContext("2d");
+  const rnd = (x, y) => { const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return n - Math.floor(n); };
+  for (let y = 0; y < H; y += 4){ const t = y / H; g.fillStyle = "rgb(" + Math.round(104 + 80 * t) + "," + Math.round(170 + 55 * t) + ",250)"; g.fillRect(0, y, W, 4); }
+  g.fillStyle = "#FFF6B8"; g.fillRect(W - 24, 5, 14, 14); g.fillStyle = "#FFE14D"; g.fillRect(W - 22, 7, 10, 10);
+  g.fillStyle = "rgba(255,255,255,.92)";
+  [[.06,.12,18],[.42,.2,26],[.72,.34,16],[.18,.42,22],[.6,.52,14]].forEach(k => { const x = Math.round(k[0] * W), y = Math.round(k[1] * H), w = k[2]; g.fillRect(x, y, w, 3); g.fillRect(x + 3, y - 2, w - 8, 2); g.fillRect(x + 2, y + 3, w - 5, 1); });
+  const B = 8, cols = Math.ceil(W / B) + 1, tops = [];
+  const GR = ["#5DA130","#6BB53A","#4F8E27"], DI = ["#8A5A33","#7A4E2B","#9A6A3F"], ST = ["#8A8A8A","#7C7C7C","#969696"];
+  for (let col = 0; col < cols; col++){
+    const hb = 2 + Math.round(1.1 * Math.sin(col * 0.9) + 0.7 * Math.sin(col * 2.3 + 1)), top = H - Math.max(1, hb) * B; tops.push(top);
+    for (let x = col * B; x < (col + 1) * B && x < W; x++) for (let y = top; y < H; y++){
+      const d = y - top, r = rnd(x, y), pal = (d < 2 || (d === 2 && r > .5)) ? GR : d > 2 * B ? ST : DI;
+      g.fillStyle = pal[Math.floor(rnd(x + 3, y + 7) * 3)]; g.fillRect(x, y, 1, 1);
+    }
+  }
+  for (let col = 1; col < cols - 1; col++){
+    if (rnd(col, 7) < .7 || rnd(col - 1, 7) >= .7) continue;
+    const cx = col * B + 3, top = tops[col];
+    g.fillStyle = "#6B4423"; g.fillRect(cx, top - 7, 2, 7);
+    for (let x = cx - 4; x < cx + 6; x++) for (let y = top - 14; y < top - 6; y++){ if ((x === cx - 4 || x === cx + 5) && (y === top - 14 || y === top - 7)) continue; g.fillStyle = ["#3F7A1E","#4C8F26","#35691A"][Math.floor(rnd(x, y) * 3)]; g.fillRect(x, y, 1, 1); }
+  }
+}
+let wt = 0; window.addEventListener("resize", () => { clearTimeout(wt); wt = setTimeout(paintWorld, 200); });
+paintWorld();
+boot();
+if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>
